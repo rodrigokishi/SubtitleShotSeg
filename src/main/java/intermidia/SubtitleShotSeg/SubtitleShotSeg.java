@@ -9,6 +9,8 @@ import java.util.Iterator;
 import org.fredy.jsrt.api.SRT;
 import org.fredy.jsrt.api.SRTInfo;
 import org.fredy.jsrt.api.SRTReader;
+import org.fredy.jsrt.api.SRTWriter;
+import org.fredy.jsrt.editor.SRTEditor;
 
 import TVSSUnits.Shot;
 import TVSSUnits.ShotList;
@@ -18,15 +20,16 @@ public class SubtitleShotSeg
 {
     public static void main( String[] args ) throws Exception
     {
-        SRTInfo subtitleList = SRTReader.read(new File(args[0]));                
+        SRTInfo subtitleList = SRTReader.read(new File(args[0]));
         ShotList shotList = ShotReader.readFromCSV(args[1]);
         float FPS = Integer.parseInt(args[2]);
         
-        /*Iterator<SRT> subtitleIterator = subtitleList.iterator();*/
+        
         Iterator<Shot> shotIterator = shotList.getList().iterator();
         int shotIndex = 1;
         int writtenShotIndex = 0;
         ArrayList<String> shotSubtitles = new ArrayList<String>();
+        
         
         Shot actualShot;     
         actualShot = shotIterator.next();
@@ -78,6 +81,27 @@ public class SubtitleShotSeg
         	subtitleWriter.write(shotSubtitle + "\n");
         }
         subtitleWriter.close();
+        
+        //Write a srt file
+        shotIndex = 1;
+        if(args.length > 4)
+        {
+        	for(Shot shot : shotList.getList())
+        	{
+        		Date dummyDate = new Date(0);
+        		@SuppressWarnings("deprecation")
+				int timezoneOffset = dummyDate.getTimezoneOffset() * 60 * 1000;
+        		
+        		Date startTime = new Date((long)((shot.getEndBoundary() * 1000) / FPS) + timezoneOffset - 500);        	
+        		Date endTime = new Date((long)((shot.getEndBoundary() * 1000) / FPS) + timezoneOffset + 500);        		        		
+        		
+        		int insertIndex = findIndex(startTime, subtitleList);
+        		SRT shotEnd = new SRT(insertIndex, startTime, endTime, "End of Shot " + shotIndex++);
+        		SRTEditor.insertSubtitle(subtitleList, shotEnd);        		
+        	}
+        	File srtOutput = new File(args[4]);        	
+        	SRTWriter.write(srtOutput, subtitleList);
+        }
     }
         
 	private static float convertToFrame(Date time, float FPS)    
@@ -103,5 +127,15 @@ public class SubtitleShotSeg
     		}
     	}
     	return fullLine.replaceAll("\\<.*?>",""); 
+	}
+	
+	private static int findIndex(Date point, SRTInfo list)
+	{
+		int index = 0;
+		while(index < list.size() && point.after(list.get(index).startTime))
+		{
+			index++;
+		}
+		return list.get(index).number;
 	}
 }
