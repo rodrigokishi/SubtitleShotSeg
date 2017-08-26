@@ -18,6 +18,8 @@ import TVSSUtils.ShotReader;
 
 public class SubtitleShotSeg 
 {
+	//Usage: <in: subtitles in srt format> <in: csv shot frame boundaries> 
+	// <in: source video FPS> <out: arff subtitle shot segmentation file> <out(opt): srt shot segmentation file>
     public static void main( String[] args ) throws Exception
     {
         SRTInfo subtitleList = SRTReader.read(new File(args[0]));
@@ -43,14 +45,14 @@ public class SubtitleShotSeg
         		actualShot = shotIterator.next();
         		if(writtenShotIndex < shotIndex)
         		{
-        			shotSubtitles.add(shotIndex + " \"\"");
+        			//shotSubtitles.add(shotIndex + ",''");
+        			shotSubtitles.add(shotIndex + ",?");
         		}
         		shotIndex++;
         	}
         	if(actualSubtitleFrameIndex < actualShot.getEndBoundary())
         	{           	
-        		shotSubtitles.add(shotIndex + " \"" + clearHtml(actualSubtitle) + "\"");
-        		//shotSubtitles.add(shotIndex + " " + actualSubtitle.toString());
+        		shotSubtitles.add(shotIndex + ",'" + clearHtml(actualSubtitle) + "'");
         		if(writtenShotIndex < shotIndex)
         		{
         			writtenShotIndex = shotIndex;
@@ -69,13 +71,20 @@ public class SubtitleShotSeg
         //To exhaust final shots without subtitles
         while(shotIterator.hasNext())
         {
-       		shotSubtitles.add(shotIndex++ + " \"\"");
+       		//shotSubtitles.add(shotIndex++ + ",''");
+        	shotSubtitles.add(shotIndex++ + ",?");
         	shotIterator.next();
         }
-        shotSubtitles.add(shotIndex + " \"\"");
+        //shotSubtitles.add(shotIndex + ",''");
+        shotSubtitles.add(shotIndex + ",?");
     	
       
-        FileWriter subtitleWriter = new FileWriter(args[3]);                
+        //Write arff file        
+        FileWriter subtitleWriter = new FileWriter(args[3]);
+        subtitleWriter.write("@RELATION " + args[0] + "\n\n");
+        subtitleWriter.write("@ATTRIBUTE shot NUMERIC\n");
+        subtitleWriter.write("@ATTRIBUTE subtitle STRING\n\n");
+        subtitleWriter.write("@DATA\n");
         for(String shotSubtitle : shotSubtitles)
         {        	
         	subtitleWriter.write(shotSubtitle + "\n");
@@ -126,6 +135,7 @@ public class SubtitleShotSeg
     			fullLine = text;
     		}
     	}
+    	fullLine = fullLine.replaceAll("'", "\\\\'");
     	return fullLine.replaceAll("\\<.*?>",""); 
 	}
 	
